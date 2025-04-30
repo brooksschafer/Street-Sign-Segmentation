@@ -4,12 +4,14 @@ import numpy as np
 import matplotlib.pyplot as plt
 import os
 
-def cleanMask(binaryMask):
+def cleanMask(binaryMask, method):
     binaryMask = morphology.remove_small_objects(binaryMask, min_size=1000)
     binaryMask = morphology.remove_small_holes(binaryMask, area_threshold=2000)
     binaryMask = morphology.closing(binaryMask, morphology.square(3))
-    cleanedMask = morphology.opening(binaryMask, morphology.square(2))
-    #cleanedMask = segmentation.clear_border(binaryMask)
+    binaryMask = morphology.opening(binaryMask, morphology.square(2))
+    cleanedMask = morphology.remove_small_holes(binaryMask, area_threshold=1000)
+    if (method != "K-Means (k=2)"):
+        cleanedMask = segmentation.clear_border(cleanedMask)
 
     return cleanedMask
 
@@ -17,7 +19,7 @@ def plotHSV(h, s, v):
     fig, axs = plt.subplots(1, 3, figsize=(15, 5))
     fig.suptitle("HSV Values", fontsize=18)
 
-    axs[0].imshow(h, cmap='twilight')
+    axs[0].imshow(h, cmap='hsv')
     axs[0].set_title("Hue Channel")
     axs[1].imshow(s, cmap='gray')
     axs[1].set_title("Saturation Channel")
@@ -59,8 +61,20 @@ for filename in os.listdir('INPUT'):
     plotHSV(h, s, v)
 
     #Thresholding by saturation value
-    binaryMask = s > 0.6
-    cleanedMask = cleanMask(binaryMask)
+    threshold = 0.75
+    binaryMask = s > threshold
+
+    plt.figure(figsize=(6, 4))
+    plt.hist(s.ravel(), bins=256, range=(0, 1), color='blue', alpha=0.7)
+    plt.axvline(threshold, color='red', linestyle='-', label=f'Threshold = {threshold}')
+    plt.title("Saturation Histogram")
+    plt.xlabel("Saturation Value")
+    plt.ylabel("# of Pixels")
+    plt.legend() 
+    plt.tight_layout()
+    plt.show()
+
+    cleanedMask = cleanMask(binaryMask, "Thresholding")
     plotResults(img, binaryMask, cleanedMask, "Thresholding")
 
     #K-means clustering (k=2)
@@ -69,7 +83,7 @@ for filename in os.listdir('INPUT'):
     kMeans.fit(newImg)
     binaryMask = (kMeans.labels_ == 1).reshape(hsvImg.shape[0], hsvImg.shape[1])
 
-    cleanedMask = cleanMask(binaryMask)
+    cleanedMask = cleanMask(binaryMask, "K-Means (k=2)")
     plotResults(img, binaryMask, cleanedMask, "K-Means (k=2)")
 
     #K-means clustering (k=4)
@@ -79,16 +93,17 @@ for filename in os.listdir('INPUT'):
     clusteredImg = labels.reshape(hsvImg.shape[0], hsvImg.shape[1])
 
     plt.imshow(clusteredImg, cmap='viridis')
-    plt.title("K-Means Cluster (k=4)")
+    plt.title("K-Means Clusters (k=4)")
+    plt.tight_layout()
     plt.show()
 
     #Get smallest cluster for mask
     uniqueLabels, counts = np.unique(labels, return_counts=True)
-    dominantCluster = uniqueLabels[np.argmin(counts)]
-    binaryMask = (labels == dominantCluster)
+    smallestCluster = uniqueLabels[np.argmin(counts)]
+    binaryMask = (labels == smallestCluster)
     binaryMask = binaryMask.reshape(hsvImg.shape[0], hsvImg.shape[1])
 
-    cleanedMask = cleanMask(binaryMask)
+    cleanedMask = cleanMask(binaryMask, "K-Means (k=4)")
     plotResults(img, binaryMask, cleanedMask, "K-Means (k=4)")
 
 print("Program complete")
