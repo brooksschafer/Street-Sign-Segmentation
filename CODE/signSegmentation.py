@@ -29,9 +29,18 @@ def plotHSV(h, s, v):
     plt.tight_layout()
     plt.show()
 
-def plotResults(img, binaryMask, cleanedMask, method):
+def plotResults(img, fileName, binaryMask, cleanedMask, method):
     segmentedImg = img.copy()
     segmentedImg[~cleanedMask] = 0
+
+    name, extension = os.path.splitext(fileName)
+    if (method == "Thresholding"):
+        fileName = f"{name}_thresholding{extension}"
+    elif (method == "K-Means (k=4)"):
+        fileName = f"{name}_kMeans{extension}"
+    outputPath = os.path.join('OUTPUT', fileName)
+    if (method != "K-Means (k=2)"):
+        plt.imsave(outputPath, segmentedImg)
 
     fig, axs = plt.subplots(1, 4, figsize=(15, 4))
     fig.suptitle(method + " Segmentation Results", fontsize=18)
@@ -48,8 +57,8 @@ def plotResults(img, binaryMask, cleanedMask, method):
     plt.tight_layout()
     plt.show()
 
-for filename in os.listdir('INPUT'):
-    imgPath = os.path.join('INPUT', filename)
+for fileName in os.listdir('INPUT'):
+    imgPath = os.path.join('INPUT', fileName)
     
     #Load and preprocess image
     img = np.asarray(io.imread(imgPath))
@@ -75,7 +84,7 @@ for filename in os.listdir('INPUT'):
     plt.show()
 
     cleanedMask = cleanMask(binaryMask, "Thresholding")
-    plotResults(img, binaryMask, cleanedMask, "Thresholding")
+    plotResults(img, fileName, binaryMask, cleanedMask, "Thresholding")
 
     #K-means clustering (k=2)
     newImg = hsvImg.reshape(-1, 3)
@@ -84,7 +93,7 @@ for filename in os.listdir('INPUT'):
     binaryMask = (kMeans.labels_ == 1).reshape(hsvImg.shape[0], hsvImg.shape[1])
 
     cleanedMask = cleanMask(binaryMask, "K-Means (k=2)")
-    plotResults(img, binaryMask, cleanedMask, "K-Means (k=2)")
+    plotResults(img, fileName, binaryMask, cleanedMask, "K-Means (k=2)")
 
     #K-means clustering (k=4)
     kMeans = KMeans(n_clusters=4, n_init=10)
@@ -104,6 +113,6 @@ for filename in os.listdir('INPUT'):
     binaryMask = binaryMask.reshape(hsvImg.shape[0], hsvImg.shape[1])
 
     cleanedMask = cleanMask(binaryMask, "K-Means (k=4)")
-    plotResults(img, binaryMask, cleanedMask, "K-Means (k=4)")
+    plotResults(img, fileName, binaryMask, cleanedMask, "K-Means (k=4)")
 
 print("Program complete")
